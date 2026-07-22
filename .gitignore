@@ -1,0 +1,18 @@
+# Exclude all markdown files
+*.md
+
+# Python cache and build directories
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+
+# Test output files and generated artifacts
+tests/test_outputs/
+tests/dummy_artifacts/
+*.html
+*.csv
