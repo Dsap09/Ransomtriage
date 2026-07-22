@@ -1,5 +1,6 @@
-# Exclude all markdown files
-*.md
+# Exclude internal design & brief markdown documents
+brief.md
+prd.md
 
 # Python cache and build directories
 __pycache__/
