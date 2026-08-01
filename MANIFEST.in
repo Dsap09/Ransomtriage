@@ -1,1 +1,2 @@
 include ransomtriage/templates/*.html
+recursive-include ransomtriage/templates *

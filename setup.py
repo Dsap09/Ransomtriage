@@ -8,7 +8,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        "ransomtriage": ["templates/*.html"],
+        "ransomtriage": ["templates/*.html", "templates/*"],
     },
     install_requires=[
         "pandas>=1.3.0",
