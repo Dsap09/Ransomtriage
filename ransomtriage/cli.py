@@ -3,6 +3,7 @@ import sys
 import argparse
 import logging
 from pathlib import Path
+
 try:
     from tqdm import tqdm
 except ImportError:
@@ -17,6 +18,9 @@ except ImportError:
             self.n += n
         def close(self):
             pass
+        @staticmethod
+        def write(msg):
+            sys.stderr.write(msg + "\n")
 
 
 from .parsers.browser import BrowserParser
@@ -27,13 +31,28 @@ from .scoring.risk_scorer import RiskScorer
 from .reporters.html_reporter import HTMLReporter
 from .reporters.csv_reporter import CSVReporter
 
+
+class TqdmLoggingHandler(logging.Handler):
+    """Logging handler that routes messages through tqdm.write to prevent progress bar corruption."""
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            if hasattr(tqdm, "write"):
+                tqdm.write(msg)
+            else:
+                sys.stderr.write(msg + "\n")
+        except Exception:
+            self.handleError(record)
+
+
 def setup_logging(verbose: bool):
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="[%(asctime)s] [%(levelname)s] %(message)s",
-        datefmt="%H:%M:%S"
-    )
+    level = logging.DEBUG if verbose else logging.WARNING
+    handler = TqdmLoggingHandler()
+    handler.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%H:%M:%S"))
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    root_logger.handlers = [handler]
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -60,63 +79,73 @@ def main():
     print(f"[*] HTML Output    : {args.output}")
     print(f"[*] CSV Output     : {args.csv}")
 
-    pbar = tqdm(total=5, desc="Progress Analisa", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]")
+    # Discover candidate files to calculate granular progress steps
+    target_files = []
+    for root, _, files in os.walk(input_dir):
+        for f in files:
+            target_files.append(os.path.join(root, f))
 
-    # Step 1: Discover & Parse Artifacts
-    pbar.set_description("1/5 Discovering & Parsing Artifacts")
-    
+    # Total steps: 1 step per discovered file + 4 main pipeline steps
+    total_steps = max(len(target_files), 1) + 4
+    pbar = tqdm(total=total_steps, desc="Progress Analisa", bar_format="{l_bar}{bar:30}| {percentage:3.0f}% [{elapsed}]")
+
     downloads = []
     executions = []
     amcache_records = []
 
-    # Find History files
-    for root, _, files in os.walk(input_dir):
-        for f in files:
-            full_f = os.path.join(root, f)
-            
+    # Step 1: Discover & Parse Artifacts per file
+    if target_files:
+        for full_f in target_files:
+            f_name = os.path.basename(full_f)
+            f_lower = f_name.lower()
+            pbar.set_description(f"Parsing: {f_name[:20]}")
+
             # Browser History SQLite
-            if f.lower() in ("history", "history.sqlite") or f.lower().endswith(".sqlite"):
+            if f_lower in ("history", "history.sqlite") or f_lower.endswith(".sqlite"):
                 bp = BrowserParser(full_f)
                 if bp.validate():
                     downloads.extend(bp.parse())
 
             # Prefetch .pf files
-            elif f.lower().endswith(".pf"):
+            elif f_lower.endswith(".pf"):
                 pp = PrefetchParser(full_f)
                 if pp.validate():
                     executions.extend(pp.parse())
 
             # Amcache .hve or .json files
-            elif f.lower().endswith(".hve") or (f.lower().startswith("amcache") and f.lower().endswith(".json")):
+            elif f_lower.endswith(".hve") or (f_lower.startswith("amcache") and f_lower.endswith(".json")):
                 ap = AmcacheParser(full_f)
                 if ap.validate():
                     amcache_records.extend(ap.parse())
 
-    pbar.update(1)
+            pbar.update(1)
+    else:
+        pbar.update(1)
 
     # Step 2: Correlation Engine
-    pbar.set_description("2/5 Running Correlation Engine")
+    pbar.set_description("Correlating Chains")
     correlator = CorrelationEngine(downloads, executions, amcache_records)
     correlated_events = correlator.correlate()
     pbar.update(1)
 
-    # Step 3: Delta-T Risk Scoring
-    pbar.set_description("3/5 Calculating Risk Scores")
+    # Step 3: Risk Scoring
+    pbar.set_description("Calculating Risk Scores")
     scored_events = RiskScorer.score_all(correlated_events)
     pbar.update(1)
 
     # Step 4: HTML Report Generation
-    pbar.set_description("4/5 Generating HTML Report")
+    pbar.set_description("Generating HTML Report")
     html_reporter = HTMLReporter(scored_events, input_dir)
     html_reporter.generate(args.output)
     pbar.update(1)
 
     # Step 5: CSV Exporter
-    pbar.set_description("5/5 Exporting CSV Report")
+    pbar.set_description("Exporting CSV Summary")
     csv_reporter = CSVReporter(scored_events)
     csv_reporter.generate(args.csv)
     pbar.update(1)
 
+    pbar.set_description("Selesai")
     pbar.close()
 
     # Terminal Summary Output
@@ -137,5 +166,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
