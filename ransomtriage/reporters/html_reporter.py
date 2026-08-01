@@ -4,7 +4,7 @@ import datetime
 import logging
 from typing import List, Dict, Any
 try:
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
+    from jinja2 import Environment, FileSystemLoader, PackageLoader, ChoiceLoader, select_autoescape
     HAS_JINJA2 = True
 except ImportError:
     HAS_JINJA2 = False
@@ -171,8 +171,9 @@ class HTMLReporter:
 
     def generate(self, output_path: str):
         """Renders Jinja2 template or string fallback and writes file to output_path."""
-        template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
-        
+        base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        template_dir = os.path.join(base_dir, "templates")
+
         sankey_json = json.dumps(self._build_sankey_data())
         timeline_json = json.dumps(self._build_timeline_data())
 
@@ -190,8 +191,13 @@ class HTMLReporter:
             formatted_events.append(e_copy)
 
         if HAS_JINJA2:
+            loaders = [FileSystemLoader(template_dir)]
+            try:
+                loaders.append(PackageLoader("ransomtriage", "templates"))
+            except Exception:
+                pass
             env = Environment(
-                loader=FileSystemLoader(template_dir),
+                loader=ChoiceLoader(loaders),
                 autoescape=select_autoescape(["html", "xml"])
             )
             template = env.get_template("report_template.html")
