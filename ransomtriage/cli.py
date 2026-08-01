@@ -161,8 +161,9 @@ def main():
 
     abs_html_path = os.path.abspath(args.output).replace("\\", "/")
     abs_csv_path = os.path.abspath(args.csv).replace("\\", "/")
-    print(f"\n[+] Laporan HTML: file:///{abs_html_path}")
-    print(f"[+] Summary CSV : file:///{abs_csv_path}")
+    print(f"\n[+] Laporan HTML (Buka di Web Browser)     : file:///{abs_html_path}")
+    print(f"[+] Summary CSV  (Buka di LibreOffice/Excel): {abs_csv_path}")
+    print(f"    [Tips] Untuk membuka tabel spreadsheet di Kali, ketik: libreoffice {args.csv} &")
 
 if __name__ == "__main__":
     main()
