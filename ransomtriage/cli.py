@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import logging
+import webbrowser
 from pathlib import Path
 
 try:
@@ -63,6 +64,7 @@ def main():
     parser.add_argument("-o", "--output", default="report.html", help="Path file output laporan HTML (default: report.html)")
     parser.add_argument("-c", "--csv", default="correlation_summary.csv", help="Path file output CSV terintegrasi (default: correlation_summary.csv)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Menampilkan log verbose/debug di terminal")
+    parser.add_argument("--no-open", action="store_true", help="Jangan membuka laporan HTML secara otomatis di browser")
 
     args = parser.parse_args()
     setup_logging(args.verbose)
@@ -159,11 +161,35 @@ def main():
     if crit_count > 0:
         print(f"[!] PERINGATAN: Ditemukan {crit_count} kejadian berisiko CRITICAL / HIGH!")
 
+    # Render direct ASCII summary table in terminal
+    if scored_events:
+        print("\n[+] HASIL ANALISA KORELASI (DIRECT TERMINAL TABLE):")
+        print("=" * 95)
+        header_str = f"{'LEVEL':<10} | {'SCORE':<5} | {'DOWNLOAD FILE':<25} | {'EXECUTED PROCESS':<25} | {'DELTA-T':<8}"
+        print(header_str)
+        print("-" * 95)
+        for ev in scored_events:
+            lvl = ev.get("risk_level", "BENIGN")
+            score = str(ev.get("risk_score", 0))
+            dl = (ev.get("download_file") or "")[:24]
+            proc = (ev.get("executed_process") or "Tidak Dieksekusi")[:24]
+            dt = f"{ev.get('delta_t_seconds'):.2f}s" if ev.get("delta_t_seconds") is not None else "-"
+            print(f"{lvl:<10} | {score:<5} | {dl:<25} | {proc:<25} | {dt:<8}")
+        print("=" * 95)
+
     abs_html_path = os.path.abspath(args.output).replace("\\", "/")
     abs_csv_path = os.path.abspath(args.csv).replace("\\", "/")
-    print(f"\n[+] Laporan HTML (Buka di Web Browser)     : file:///{abs_html_path}")
-    print(f"[+] Summary CSV  (Buka di LibreOffice/Excel): {abs_csv_path}")
-    print(f"    [Tips] Untuk membuka tabel spreadsheet di Kali, ketik: libreoffice {args.csv} &")
+    print(f"\n[+] File Laporan HTML : {abs_html_path}")
+    print(f"[+] File Ringkasan CSV : {abs_csv_path}")
+
+    # Auto-open HTML report in default browser automatically
+    if not args.no_open:
+        try:
+            file_url = f"file:///{abs_html_path}"
+            webbrowser.open(file_url)
+            print(f"[*] Meluncurkan laporan di browser otomatis: {file_url}")
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     main()
