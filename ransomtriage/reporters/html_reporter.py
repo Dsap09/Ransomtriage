@@ -60,7 +60,7 @@ class HTMLReporter:
             sources.append(ref_idx)
             targets.append(dl_idx)
             values.append(1)
-            colors.append("#38bdf8")
+            colors.append("rgba(56, 189, 248, 0.4)")
 
             if ev.get("executed_process"):
                 exec_proc = f"Exec: {ev['executed_process']}"
@@ -72,24 +72,33 @@ class HTMLReporter:
 
                 risk = ev.get("risk_level", "LOW")
                 if risk == "CRITICAL":
-                    colors.append("#ef4444")
+                    colors.append("rgba(239, 68, 68, 0.5)")
                 elif risk == "HIGH":
-                    colors.append("#f97316")
+                    colors.append("rgba(249, 115, 22, 0.5)")
                 elif risk == "MEDIUM":
-                    colors.append("#eab308")
+                    colors.append("rgba(234, 179, 8, 0.5)")
                 else:
-                    colors.append("#10b981")
+                    colors.append("rgba(16, 185, 129, 0.5)")
 
         if not nodes:
             return {}
 
+        node_colors = []
+        for n in nodes:
+            if n.startswith("Exec:"):
+                node_colors.append("#ef4444")
+            elif n.startswith("Download:"):
+                node_colors.append("#6366f1")
+            else:
+                node_colors.append("#0284c7")
+
         fig = go.Figure(data=[go.Sankey(
             node=dict(
-                pad=18,
-                thickness=22,
-                line=dict(color="#334155", width=1),
+                pad=25,
+                thickness=20,
+                line=dict(color="#ffffff", width=1.5),
                 label=nodes,
-                color="#1e293b"
+                color=node_colors
             ),
             link=dict(
                 source=sources,
@@ -102,8 +111,8 @@ class HTMLReporter:
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#94a3b8", size=12, family="Inter, sans-serif"),
-            margin=dict(l=10, r=10, t=10, b=10)
+            font=dict(color="#ffffff", size=13, family="Inter, sans-serif"),
+            margin=dict(l=20, r=20, t=20, b=20)
         )
 
         return json.loads(json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder))
@@ -163,10 +172,10 @@ class HTMLReporter:
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#94a3b8", family="Inter, sans-serif"),
-            xaxis=dict(title="Timestamp (UTC)", gridcolor="#1e293b"),
-            yaxis=dict(gridcolor="#1e293b"),
-            margin=dict(l=10, r=10, t=10, b=40)
+            font=dict(color="#ffffff", family="Inter, sans-serif"),
+            xaxis=dict(title="Timestamp (UTC)", gridcolor="#334155", title_font=dict(color="#ffffff"), tickfont=dict(color="#f8fafc")),
+            yaxis=dict(gridcolor="#334155", tickfont=dict(color="#f8fafc")),
+            margin=dict(l=20, r=20, t=20, b=40)
         )
 
         return json.loads(json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder))
