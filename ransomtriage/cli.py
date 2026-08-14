@@ -5,6 +5,12 @@ import logging
 import webbrowser
 from pathlib import Path
 
+# readline mengaktifkan arrow keys, history, dan line editing di input() pada Linux/macOS
+try:
+    import readline  # noqa: F401
+except ImportError:
+    pass  # Windows tanpa pyreadline — input() tetap berjalan normal
+
 # Pastikan stdout/stderr menggunakan UTF-8 di Windows agar Unicode box characters tampil benar
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
